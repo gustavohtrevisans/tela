@@ -124,6 +124,18 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
 .dica p { margin: 0; }
 .dica b { color: var(--giz); font-weight: 600; }
 
+/* ---------- câmera (bolha no canto) e pedidos para entrar ---------- */
+.palco video.bolha { inset: 12px 12px auto auto; width: 24%; height: auto; min-width: 120px; max-width: 340px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; border: 2px solid color-mix(in srgb, var(--giz) 35%, transparent); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); background: var(--preto); z-index: 2; cursor: pointer; }
+.palco video.bolha.grande { width: 42%; max-width: 620px; }
+.palco.so-camera video.bolha { inset: 0; width: 100%; height: 100%; min-width: 0; max-width: none; aspect-ratio: auto; object-fit: contain; border: 0; border-radius: 0; box-shadow: none; cursor: default; }
+#previaCam { transform: scaleX(-1); }
+.controles, .ativar-som { z-index: 3; }
+select { min-height: 44px; max-width: 240px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--risco); background: var(--placa); color: var(--giz); font: 14px var(--f-texto); }
+.viewer.pedido { border-color: color-mix(in srgb, var(--ambar) 55%, var(--risco)); background: color-mix(in srgb, var(--ambar) 8%, var(--placa)); }
+.viewer.pedido .ponto { background: var(--ambar); }
+.pedido-acoes { display: flex; gap: 6px; flex: none; }
+.contagem.pedindo { border-color: var(--ambar); color: var(--ambar); }
+
 /* ---------- quem assiste ---------- */
 .sala { display: flex; flex-direction: column; gap: 14px; }
 .palco.grande { width: min(100%, calc((100vh - 200px) * 16 / 9)); width: min(100%, calc((100dvh - 200px) * 16 / 9)); min-width: min(100%, 320px); margin-inline: auto; border-radius: 12px; }
@@ -151,6 +163,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
   .controles input[type="range"] { display: none; }
   .marca span { font-size: 20px; }
   .ativar-som { padding: 11px 16px; font-size: 14px; gap: 8px; }
+  .palco video.bolha { inset: 8px 8px auto auto; width: 30%; min-width: 96px; border-radius: 9px; }
   .ativar-som svg { width: 18px; height: 18px; }
   .btn { flex: 1 1 auto; }
 }
@@ -171,6 +184,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
     <symbol id="i-cheia" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></g></symbol>
     <symbol id="i-pip" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/></g><rect x="12" y="11" width="7" height="6" rx="1.2" fill="currentColor"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10.5l5-3v9l-5-3"/></g></symbol>
   </defs>
 </svg>
 
@@ -185,6 +199,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
   <section>
     <div class="palco" id="palcoA">
       <video id="previa" playsinline muted autoplay></video>
+      <video id="previaCam" class="bolha" playsinline muted autoplay hidden></video>
       <div class="fora-do-ar" id="vazioA">
         <div class="barras" aria-hidden="true"></div>
         <div class="vazio-texto">
@@ -198,6 +213,8 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       <button id="btnCompartilhar" class="btn primario" type="button"><svg aria-hidden="true"><use href="#i-tela"/></svg>Compartilhar minha tela</button>
       <button id="btnTrocar" class="btn" type="button" hidden><svg aria-hidden="true"><use href="#i-trocar"/></svg>Trocar o que compartilho</button>
       <button id="btnParar" class="btn perigo" type="button" hidden><svg aria-hidden="true"><use href="#i-parar"/></svg>Parar</button>
+      <button id="btnCam" class="btn" type="button"><svg aria-hidden="true"><use href="#i-camera"/></svg><span>Ligar câmera</span></button>
+      <select id="selCamera" aria-label="Escolher câmera" hidden></select>
       <p class="aviso" id="avisoA" role="status" aria-live="polite"></p>
     </div>
     <div class="bloco dica">
@@ -213,7 +230,10 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
         <code id="linkSala"></code>
         <button id="btnCopiar" class="btn compacto" type="button"><svg aria-hidden="true"><use href="#i-copia"/></svg><span>Copiar</span></button>
       </div>
-      <p class="nota">O link não muda. Quem tiver ele pode assistir. <button id="btnNovoLink" class="link-botao" type="button">Gerar link novo</button></p>
+      <p class="nota">O link não muda. <button id="btnNovoLink" class="link-botao" type="button">Gerar link novo</button></p>
+      <label class="check"><input id="chkAprovar" type="checkbox"> Só entra quem eu aceitar</label>
+      <p class="nota" id="notaAprovar"><span id="textoAprovar"></span> <button id="btnEsquecer" class="link-botao" type="button" hidden></button></p>
+      <p class="nota" id="linhaAvisos" hidden><button id="btnAvisos" class="link-botao" type="button">Ativar notificação do Windows</button> para saber quando alguém pedir para entrar.</p>
       <p class="nota alerta" id="avisoArquivo" hidden>Você abriu este arquivo direto do computador. Seus amigos precisam do endereço do site publicado, não deste arquivo.</p>
     </section>
 
@@ -231,7 +251,8 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
     </section>
 
     <section class="bloco">
-      <h2 class="rotulo">Assistindo agora <span class="contagem mono" id="contagem">0</span></h2>
+      <h2 class="rotulo">Assistindo agora <span class="contagem mono" id="contagem">0</span> <span class="contagem pedindo mono" id="contagemPedidos" hidden></span></h2>
+      <ul class="lista" id="listaPedidos" hidden></ul>
       <ul class="lista" id="listaViewers"></ul>
       <p class="nota" id="listaVazia">Ninguém ainda. Mande o link no grupo.</p>
     </section>
@@ -243,6 +264,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
 <main id="espectador" class="sala gutter" hidden>
   <div class="palco grande" id="palcoV">
     <video id="tela" playsinline autoplay muted></video>
+    <video id="cam" class="bolha" playsinline autoplay muted hidden title="Clique para aumentar ou diminuir"></video>
     <div class="fora-do-ar" id="estadoV">
       <div class="barras" aria-hidden="true"></div>
       <div class="vazio-texto" role="status" aria-live="polite">
@@ -292,6 +314,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
   var CODIGO_OK = /^[a-z0-9]{6,16}$/;
   var MAX_VIEWERS = 10;
   var AUDIO_KBPS = 128;
+  var CAM_KBPS = 1200;
   var ANIMAIS = ['Capivara', 'Tucano', 'Jabuti', 'Mico-leão', 'Arara', 'Quati', 'Tatu-bola', 'Boto', 'Onça-pintada', 'Sabiá',
     'Bem-te-vi', 'Lobo-guará', 'Tamanduá', 'Sagui', 'Jacaré', 'Preguiça', 'Ariranha', 'Jaguatirica', 'Seriema', 'Peixe-boi'];
   var PRESETS = {
@@ -404,14 +427,19 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
     var comSom = ler('som') !== '0';
     var nomeHost = limparNome(ler('nomeHost') || '');
     var peer = null, stream = null, aoVivo = false, servidor = 'conectando';
-    var viewers = new Map(), bloqueados = new Set();
+    var viewers = new Map(), bloqueados = new Set(), pendentes = new Map();
+    var camStream = null, camId = ler('camera') || '';
+    var pedirAprovacao = ler('aprovar') !== '0';
+    var aprovados = new Set();
+    try { (JSON.parse(ler('aprovados') || '[]') || []).forEach(function (d) { if (/^[a-f0-9]{32}$/.test(d)) aprovados.add(d); }); } catch (e) {}
+    var ctxAudio = null;
     var tentativasId = 0, tReconectar = null, tNome = null, confirmarAte = 0;
     var previa = $('previa');
     var podeCapturar = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
 
     function base() { return location.href.split('#')[0].split('?')[0]; }
     function linkSala() { return base() + '#' + codigo; }
-    function estado() { return { t: 'estado', aoVivo: aoVivo, host: nomeHost, qualidade: PRESETS[preset].detalhe }; }
+    function estado() { return { t: 'estado', aoVivo: aoVivo, camera: !!camStream, host: nomeHost, qualidade: PRESETS[preset].detalhe }; }
     function enviar(v, msg) { try { if (v.conn && v.conn.open) v.conn.send(msg); } catch (e) {} }
     function broadcast(msg) { viewers.forEach(function (v) { enviar(v, msg); }); }
     function aviso(txt, tom) { var el = $('avisoA'); el.textContent = txt || ''; el.dataset.tom = tom || ''; }
@@ -432,7 +460,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       });
     }
     function desenharEstimativa() {
-      var p = PRESETS[preset], porAmigo = p.kbps + (comSom ? AUDIO_KBPS : 0), n = viewers.size;
+      var p = PRESETS[preset], porAmigo = p.kbps + (comSom ? AUDIO_KBPS : 0) + (camStream ? CAM_KBPS : 0), n = viewers.size;
       $('estimativa').textContent = n
         ? 'Upload máximo: ' + mbps(porAmigo * n) + ' para ' + n + (n === 1 ? ' amigo' : ' amigos')
         : 'Cada amigo usa até ' + mbps(porAmigo) + ' do seu upload';
@@ -443,6 +471,10 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       $('btnTrocar').hidden = !aoVivo;
       $('btnParar').hidden = !aoVivo;
       $('vazioA').hidden = aoVivo;
+      $('btnCam').querySelector('span').textContent = camStream ? 'Desligar câmera' : 'Ligar câmera';
+      $('btnCam').classList.toggle('perigo', !!camStream);
+      $('previaCam').hidden = !camStream;
+      $('selCamera').hidden = !camStream || $('selCamera').options.length < 2;
     }
     function desenharCaptura() {
       var el = $('infoCaptura'), vt = stream && stream.getVideoTracks()[0];
@@ -457,16 +489,17 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       el.textContent = partes.join(' · '); el.hidden = false;
     }
     function atualizarPill() {
-      if (aoVivo) pill('vivo', viewers.size ? 'Ao vivo · ' + viewers.size + (viewers.size === 1 ? ' assistindo' : ' assistindo') : 'Ao vivo');
+      var noAr = aoVivo || !!camStream;
+      if (noAr) pill('vivo', viewers.size ? 'Ao vivo · ' + viewers.size + ' assistindo' : 'Ao vivo');
       else if (servidor === 'ok') pill('ok', 'Pronto');
       else if (servidor === 'ocupado') pill('alerta', 'Link em uso');
       else if (servidor === 'caiu') pill('alerta', 'Reconectando…');
       else pill('neutro', 'Conectando…');
-      document.title = aoVivo ? '● Ao vivo · Telinha' : 'Telinha';
+      document.title = pendentes.size ? '(' + pendentes.size + ') pedindo para entrar · Telinha' : (noAr ? '● Ao vivo · Telinha' : 'Telinha');
     }
     function estadoViewer(v) {
-      if (!aoVivo) return 'esperando';
-      var pc = v.call && v.call.peerConnection;
+      if (!aoVivo && !camStream) return 'esperando';
+      var c = aoVivo ? v.call : v.callCam, pc = c && c.peerConnection;
       return pc && pc.connectionState === 'connected' ? 'assistindo' : 'conectando';
     }
     function criarItem(v) {
@@ -494,9 +527,46 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
           : st === 'conectando' ? 'conectando o vídeo…' : 'na sala, esperando você começar';
       });
       $('contagem').textContent = String(viewers.size);
-      $('listaVazia').hidden = viewers.size > 0;
+      $('listaVazia').hidden = viewers.size > 0 || pendentes.size > 0;
     }
-    function tudo() { desenharBotoes(); desenharCaptura(); desenharEstimativa(); desenharViewers(); atualizarPill(); }
+    function desenharPedidos() {
+      pendentes.forEach(function (p) {
+        if (!p.el) {
+          var li = document.createElement('li'); li.className = 'viewer pedido';
+          var ponto = document.createElement('span'); ponto.className = 'ponto';
+          var info = document.createElement('div'); info.className = 'viewer-info';
+          var nm = document.createElement('span'); nm.className = 'viewer-nome';
+          var sx = document.createElement('span'); sx.className = 'viewer-stats'; sx.textContent = 'quer assistir';
+          info.append(nm, sx);
+          var acoes = document.createElement('div'); acoes.className = 'pedido-acoes';
+          var ok = document.createElement('button'); ok.type = 'button'; ok.className = 'btn compacto primario'; ok.textContent = 'Aceitar';
+          var nao = document.createElement('button'); nao.type = 'button'; nao.className = 'btn compacto'; nao.textContent = 'Recusar';
+          ok.addEventListener('click', function () { aceitar(p.id); });
+          nao.addEventListener('click', function () { recusar(p.id); });
+          acoes.append(ok, nao);
+          li.append(ponto, info, acoes);
+          p.el = { li: li, nm: nm, ok: ok, nao: nao };
+          $('listaPedidos').append(li);
+        }
+        p.el.nm.textContent = p.nome;
+        p.el.ok.setAttribute('aria-label', 'Aceitar ' + p.nome);
+        p.el.nao.setAttribute('aria-label', 'Recusar ' + p.nome);
+      });
+      $('listaPedidos').hidden = pendentes.size === 0;
+      $('contagemPedidos').hidden = pendentes.size === 0;
+      $('contagemPedidos').textContent = pendentes.size + ' pedindo';
+    }
+    function desenharAprovar() {
+      $('chkAprovar').checked = pedirAprovacao;
+      $('textoAprovar').textContent = pedirAprovacao
+        ? 'Quem abrir o link aparece aqui embaixo pra você aceitar. Quem você aceitar entra direto nas próximas vezes.'
+        : 'Qualquer pessoa com o link assiste.';
+      var b = $('btnEsquecer');
+      b.hidden = !pedirAprovacao || aprovados.size === 0;
+      b.textContent = aprovados.size === 1 ? 'Esquecer o 1 aceito' : 'Esquecer os ' + aprovados.size + ' aceitos';
+      $('linhaAvisos').hidden = !pedirAprovacao || !('Notification' in window) || Notification.permission !== 'default';
+    }
+    function tudo() { desenharBotoes(); desenharCaptura(); desenharEstimativa(); desenharViewers(); desenharPedidos(); desenharAprovar(); atualizarPill(); }
 
     // ---------- conexão com o servidor de sinalização (PeerJS)
     function estadoServidor(s) {
@@ -521,7 +591,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       p.on('open', function () {
         if (peer !== p) return;
         tentativasId = 0; estadoServidor('ok');
-        if (aoVivo) viewers.forEach(function (v) { if (!v.call) ligar(v); });
+        viewers.forEach(function (v) { if (aoVivo && !v.call) ligar(v); if (camStream && !v.callCam) ligarCamera(v); });
       });
       p.on('connection', function (conn) { if (peer === p) aoConectar(conn); else conn.close(); });
       p.on('call', function (c) { try { c.close(); } catch (e) {} });
@@ -543,35 +613,119 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
     }
 
     // ---------- amigos
+    // ---------- amigos (com fila de aprovação)
+    function dispositivoValido(d) { return typeof d === 'string' && /^[a-f0-9]{32}$/.test(d) ? d : ''; }
+    function salvarAprovados() { guardar('aprovados', JSON.stringify(Array.from(aprovados).slice(-100))); }
     function aoConectar(conn) {
-      var recusa = bloqueados.has(conn.peer) ? 'removido' : (viewers.size >= MAX_VIEWERS && !viewers.has(conn.peer) ? 'cheio' : '');
-      if (recusa) {
-        conn.on('open', function () { try { conn.send({ t: recusa }); } catch (e) {} setTimeout(function () { conn.close(); }, 500); });
+      if (bloqueados.has(conn.peer)) {
+        conn.on('open', function () { try { conn.send({ t: 'removido' }); } catch (e) {} setTimeout(function () { conn.close(); }, 500); });
         return;
       }
       conn.on('open', function () {
-        var antigo = viewers.get(conn.peer);
-        if (antigo && antigo.conn !== conn) encerrar(antigo, false);
-        var meta = conn.metadata || {};
-        var v = { id: conn.peer, nome: limparNome(meta.nome) || 'Amigo', conn: conn, call: null, falhas: 0, stats: null, ult: null, el: null };
-        viewers.set(v.id, v);
-        enviar(v, estado());
-        if (aoVivo) ligar(v);
-        tudo();
+        var meta = conn.metadata || {}, disp = dispositivoValido(meta.dispositivo);
+        if (viewers.size >= MAX_VIEWERS && !viewers.has(conn.peer)) {
+          try { conn.send({ t: 'cheio' }); } catch (e) {}
+          setTimeout(function () { conn.close(); }, 500);
+          return;
+        }
+        if (pedirAprovacao && !(disp && aprovados.has(disp))) {
+          var velho = pendentes.get(conn.peer);
+          if (velho && velho.conn !== conn) removerPedido(velho);
+          var p = { id: conn.peer, nome: limparNome(meta.nome) || 'Amigo', dispositivo: disp, conn: conn, el: null };
+          pendentes.set(p.id, p);
+          try { conn.send({ t: 'aguarde', host: nomeHost }); } catch (e) {}
+          avisarPedido(p);
+          tudo();
+          return;
+        }
+        admitir(conn, meta);
       });
       conn.on('data', function (m) {
+        if (!m || typeof m !== 'object') return;
+        var p = pendentes.get(conn.peer);
+        if (p && p.conn === conn) {
+          if (m.t === 'nome') { var pn = limparNome(m.nome); if (pn) { p.nome = pn; desenharPedidos(); } }
+          return;
+        }
         var v = viewers.get(conn.peer);
-        if (!v || v.conn !== conn || !m || typeof m !== 'object') return;
+        if (!v || v.conn !== conn) return;
         if (m.t === 'nome') { var n = limparNome(m.nome); if (n) { v.nome = n; desenharViewers(); } }
         else if (m.t === 'refazer') { if (aoVivo && (!v.call || !v.call.open)) ligar(v); }
       });
-      conn.on('close', function () { var v = viewers.get(conn.peer); if (v && v.conn === conn) encerrar(v); });
+      conn.on('close', function () {
+        var p = pendentes.get(conn.peer);
+        if (p && p.conn === conn) { removerPedido(p); tudo(); return; }
+        var v = viewers.get(conn.peer);
+        if (v && v.conn === conn) encerrar(v);
+      });
       conn.on('error', function () {});
+    }
+    function admitir(conn, meta) {
+      var antigo = viewers.get(conn.peer);
+      if (antigo && antigo.conn !== conn) encerrar(antigo, false);
+      var v = { id: conn.peer, nome: limparNome(meta.nome) || 'Amigo', dispositivo: dispositivoValido(meta.dispositivo), conn: conn,
+        call: null, callCam: null, falhas: 0, falhasCam: 0, stats: null, ult: null, el: null };
+      viewers.set(v.id, v);
+      enviar(v, estado());
+      if (aoVivo) ligar(v);
+      if (camStream) ligarCamera(v);
+      tudo();
+    }
+    function removerPedido(p) {
+      if (pendentes.get(p.id) === p) pendentes.delete(p.id);
+      if (p.el) { p.el.li.remove(); p.el = null; }
+    }
+    function aceitar(id) {
+      var p = pendentes.get(id); if (!p) return;
+      removerPedido(p);
+      if (!p.conn.open) { tudo(); return; }
+      if (viewers.size >= MAX_VIEWERS) {
+        try { p.conn.send({ t: 'cheio' }); } catch (e) {}
+        setTimeout(function () { try { p.conn.close(); } catch (e) {} }, 500);
+        aviso('A sala está cheia: no máximo ' + MAX_VIEWERS + ' pessoas assistindo.', 'erro');
+        tudo(); return;
+      }
+      if (p.dispositivo) { aprovados.add(p.dispositivo); salvarAprovados(); }
+      admitir(p.conn, { nome: p.nome, dispositivo: p.dispositivo });
+    }
+    function recusar(id) {
+      var p = pendentes.get(id); if (!p) return;
+      removerPedido(p);
+      bloqueados.add(id);
+      try { p.conn.send({ t: 'recusado', host: nomeHost }); } catch (e) {}
+      setTimeout(function () { try { p.conn.close(); } catch (e) {} }, 400);
+      tudo();
+    }
+    // Bipe + notificação do Windows: o pedido aparece mesmo com você dentro do jogo.
+    function avisarPedido(p) {
+      bip();
+      if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+        try {
+          var n = new Notification('Telinha', { body: p.nome + ' quer assistir sua tela', tag: 'telinha-pedido' });
+          n.onclick = function () { window.focus(); n.close(); };
+        } catch (e) {}
+      }
+    }
+    function bip() {
+      if (!ctxAudio) return;
+      try {
+        if (ctxAudio.state === 'suspended') ctxAudio.resume();
+        var t = ctxAudio.currentTime;
+        [[0, 660], [0.17, 880]].forEach(function (n) {
+          var o = ctxAudio.createOscillator(), g = ctxAudio.createGain();
+          o.frequency.value = n[1];
+          g.gain.setValueAtTime(0.0001, t + n[0]);
+          g.gain.exponentialRampToValueAtTime(0.2, t + n[0] + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + n[0] + 0.15);
+          o.connect(g); g.connect(ctxAudio.destination);
+          o.start(t + n[0]); o.stop(t + n[0] + 0.17);
+        });
+      } catch (e) {}
     }
     function encerrar(v, redesenhar) {
       viewers.delete(v.id);
-      var c = v.call; v.call = null;
-      if (c) { try { c.close(); } catch (e) {} }
+      var cs = [v.call, v.callCam]; v.call = null; v.callCam = null;
+      cs.forEach(function (c) { if (c) { try { c.close(); } catch (e) {} } });
       try { v.conn.close(); } catch (e) {}
       if (v.el) v.el.li.remove();
       if (redesenhar !== false) tudo();
@@ -579,6 +733,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
     function remover(id) {
       var v = viewers.get(id); if (!v) return;
       bloqueados.add(id); enviar(v, { t: 'removido' });
+      if (v.dispositivo && aprovados.delete(v.dispositivo)) salvarAprovados();
       setTimeout(function () { if (viewers.get(id) === v) encerrar(v); }, 300);
     }
     function ligar(v) {
@@ -711,6 +866,106 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       broadcast(estado());
     }
 
+    // ---------- câmera (vai numa chamada separada; sem microfone, a voz fica no Discord)
+    function pegarCamera(id) {
+      var v = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } };
+      if (id) v.deviceId = { exact: id };
+      return navigator.mediaDevices.getUserMedia({ video: v, audio: false }).catch(function (e) {
+        if (id && e && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError')) {
+          delete v.deviceId;
+          return navigator.mediaDevices.getUserMedia({ video: v, audio: false });
+        }
+        throw e;
+      });
+    }
+    function ligarCam() {
+      if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { aviso('Este navegador não deixa usar a câmera.', 'erro'); return; }
+      $('btnCam').disabled = true;
+      pegarCamera(camId).then(usarCamera, function (e) {
+        var n = e && e.name;
+        aviso(n === 'NotAllowedError' ? 'A câmera foi bloqueada. Clique no cadeado ao lado do endereço e permita a câmera.'
+          : n === 'NotFoundError' ? 'Nenhuma câmera encontrada neste aparelho.'
+          : n === 'NotReadableError' ? 'A câmera está sendo usada por outro programa.'
+          : 'Não consegui abrir a câmera (' + ((e && e.message) || n || 'erro') + ').', 'erro');
+      }).then(function () { $('btnCam').disabled = false; });
+    }
+    function usarCamera(s) {
+      var vt = s.getVideoTracks()[0];
+      if (vt) {
+        try { vt.contentHint = 'motion'; } catch (e) {}
+        vt.addEventListener('ended', function () { if (camStream === s) desligarCam('A câmera foi desconectada.'); });
+        var st = vt.getSettings ? vt.getSettings() : {};
+        if (st.deviceId) { camId = st.deviceId; guardar('camera', camId); }
+      }
+      var antiga = camStream;
+      camStream = s;
+      var pv = $('previaCam'); pv.srcObject = s;
+      var pr = pv.play(); if (pr && pr.catch) pr.catch(function () {});
+      viewers.forEach(function (v) {
+        if (v.callCam && v.callCam.peerConnection && trocarTracks(v.callCam.peerConnection, s)) return;
+        ligarCamera(v);
+      });
+      if (antiga && antiga !== s) antiga.getTracks().forEach(function (t) { t.stop(); });
+      aviso('');
+      listarCameras();
+      broadcast(estado());
+      tudo();
+    }
+    function desligarCam(msg) {
+      var s = camStream; camStream = null;
+      viewers.forEach(function (v) { var c = v.callCam; v.callCam = null; v.falhasCam = 0; if (c) { try { c.close(); } catch (e) {} } });
+      if (s) s.getTracks().forEach(function (t) { t.stop(); });
+      $('previaCam').srcObject = null;
+      broadcast(estado());
+      aviso(msg || '');
+      tudo();
+    }
+    function listarCameras() {
+      if (!navigator.mediaDevices.enumerateDevices) return;
+      navigator.mediaDevices.enumerateDevices().then(function (ds) {
+        var sel = $('selCamera'); sel.textContent = '';
+        ds.filter(function (d) { return d.kind === 'videoinput'; }).forEach(function (d, i) {
+          var o = document.createElement('option');
+          o.value = d.deviceId; o.textContent = d.label || ('Câmera ' + (i + 1)); o.selected = d.deviceId === camId;
+          sel.append(o);
+        });
+        desenharBotoes();
+      }, function () {});
+    }
+    function ligarCamera(v) {
+      if (!camStream || !peer || peer.destroyed) return;
+      if (v.callCam) { var velho = v.callCam; v.callCam = null; try { velho.close(); } catch (e) {} }
+      var call = peer.call(v.id, camStream, { metadata: { t: 'camera' } });
+      if (!call) return;
+      v.callCam = call;
+      var pc = call.peerConnection;
+      if (pc) pc.addEventListener('connectionstatechange', function () {
+        if (v.callCam !== call) return;
+        if (pc.connectionState === 'connected') {
+          v.falhasCam = 0;
+          pc.getSenders().forEach(function (snd) {
+            var prm;
+            if (!snd.track) return;
+            try { prm = snd.getParameters(); } catch (e) { return; }
+            if (!prm.encodings || !prm.encodings.length) return;
+            prm.encodings[0].maxBitrate = CAM_KBPS * 1000; prm.encodings[0].maxFramerate = 30;
+            snd.setParameters(prm).catch(function () {});
+          });
+        }
+        desenharViewers();
+      });
+      call.on('close', function () {
+        if (v.callCam !== call) return;
+        v.callCam = null;
+        if (camStream && viewers.get(v.id) === v && v.conn.open && v.falhasCam < 6) {
+          v.falhasCam++;
+          setTimeout(function () { if (camStream && viewers.get(v.id) === v && !v.callCam) ligarCamera(v); }, 1500 * v.falhasCam);
+        }
+        desenharViewers();
+      });
+      call.on('error', function () {});
+    }
+
     // ---------- números ao vivo
     function coletarStats() {
       if (aoVivo) desenharCaptura();
@@ -753,8 +1008,10 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       }
       confirmarAte = 0; b.textContent = 'Gerar link novo';
       broadcast({ t: 'desativado' });
+      pendentes.forEach(function (p) { try { p.conn.send({ t: 'desativado' }); } catch (e) {} });
       setTimeout(function () {
         viewers.forEach(function (v) { encerrar(v, false); });
+        pendentes.forEach(function (p) { removerPedido(p); try { p.conn.close(); } catch (e) {} });
         codigo = novoCodigo(); guardar('codigo', codigo);
         desenharLink(); servidor = 'conectando'; tudo();
         criarPeer();
@@ -770,12 +1027,32 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       if (at) { at.enabled = comSom; desenharCaptura(); aviso(''); }
       else if (aoVivo && comSom) aviso('Para enviar som, clique em Trocar o que compartilho e marque “Compartilhar áudio”.');
     });
+    $('btnCam').addEventListener('click', function () { if (camStream) desligarCam(''); else ligarCam(); });
+    $('selCamera').addEventListener('change', function () {
+      camId = $('selCamera').value; guardar('camera', camId);
+      if (camStream) pegarCamera(camId).then(usarCamera, function () { aviso('Não consegui trocar de câmera.', 'erro'); });
+    });
+    $('chkAprovar').addEventListener('change', function () {
+      pedirAprovacao = $('chkAprovar').checked; guardar('aprovar', pedirAprovacao ? '1' : '0');
+      if (!pedirAprovacao) Array.from(pendentes.keys()).forEach(aceitar);
+      else if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().then(tudo, function () {});
+      tudo();
+    });
+    $('btnEsquecer').addEventListener('click', function () { aprovados.clear(); salvarAprovados(); tudo(); });
+    $('btnAvisos').addEventListener('click', function () {
+      if ('Notification' in window) Notification.requestPermission().then(tudo, function () {});
+    });
+    // O navegador só deixa tocar som depois de um clique na página: o primeiro clique prepara o bipe.
+    document.addEventListener('pointerdown', function () {
+      if (!ctxAudio) { try { ctxAudio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+      else if (ctxAudio.state === 'suspended') ctxAudio.resume().catch(function () {});
+    }, true);
 
     // ---------- começo
     $('nomeHost').value = nomeHost;
     $('chkSom').checked = comSom;
     if (location.protocol === 'file:') $('avisoArquivo').hidden = false;
-    if (!podeCapturar) aviso('Para compartilhar, abra no computador (Chrome, Edge ou Firefox). Pelo celular dá para assistir.', 'erro');
+    if (!podeCapturar) aviso('Neste aparelho dá para mostrar só a câmera. Para compartilhar a tela, abra no computador (Chrome, Edge ou Firefox).', 'erro');
     desenharLink(); desenharNome(); desenharPresets(); tudo();
     criarPeer();
     setInterval(coletarStats, 2000);
@@ -783,7 +1060,10 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       modo: 'anfitriao',
       codigo: function () { return codigo; },
       viewers: function () { var a = []; viewers.forEach(function (v) { a.push({ nome: v.nome, estado: estadoViewer(v), stats: v.stats }); }); return a; },
-      servidor: function () { return servidor; }
+      servidor: function () { return servidor; },
+      pendentes: function () { var a = []; pendentes.forEach(function (p) { a.push(p.nome); }); return a; },
+      aprovados: function () { return aprovados.size; },
+      camera: function () { return !!camStream; }
     };
   }
 
@@ -798,6 +1078,14 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
     var estadoV = '', tConectar = null, tEsconder = null, falhas = 0, somLiberado = false, ultStats = null, ultimoStats = null, trava = null;
     var nome = limparNome(ler('nome') || '');
     if (!nome) { nome = ANIMAIS[Math.floor(Math.random() * ANIMAIS.length)]; guardar('nome', nome); }
+    // Identidade deste aparelho: quem o anfitrião aceitou uma vez entra direto depois.
+    var dispositivo = ler('dispositivo');
+    if (!/^[a-f0-9]{32}$/.test(dispositivo || '')) {
+      var bytes = new Uint8Array(16); crypto.getRandomValues(bytes);
+      dispositivo = Array.prototype.map.call(bytes, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+      guardar('dispositivo', dispositivo);
+    }
+    var videoCam = $('cam'), callCam = null;
     var volume = parseFloat(ler('volume'));
     if (!(volume >= 0 && volume <= 1)) volume = 1;
     $('volume').value = String(volume);
@@ -821,21 +1109,32 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
         'removido':       ['Você foi removido desta sala', ''],
         'desativado':     ['Este link foi desativado', 'Peça o link novo para ' + quem() + '.'],
         'cheia':          ['A sala está cheia', 'Tento de novo daqui a pouco.'],
+        'entrando':       ['Entrando na sala…', ''],
+        'aguardando':     ['Pedindo para entrar', Quem() + ' precisa aceitar. Fica nesta página.'],
+        'recusado':       [Quem() + ' não aceitou agora', 'Recarregue a página para pedir de novo.'],
         'ao-vivo':        ['', '']
       }[e] || ['', ''];
-      $('estadoV').hidden = e === 'ao-vivo';
       $('estadoTitulo').textContent = T[0]; $('estadoSub').textContent = T[1];
-      $('controles').hidden = e !== 'ao-vivo';
-      if (e === 'ao-vivo') pill('vivo', 'Ao vivo');
+      atualizarPalco();
+    }
+    // O que aparece no palco: a tela, a câmera (bolha no canto, ou sozinha) ou o aviso de estado.
+    function atualizarPalco() {
+      var e = estadoV, temTela = e === 'ao-vivo';
+      var temCam = !!(callCam && videoCam.srcObject) && (temTela || e === 'online' || e === 'chegando' || e === 'parou');
+      videoCam.hidden = !temCam;
+      palco.classList.toggle('so-camera', temCam && !temTela);
+      $('estadoV').hidden = temTela || temCam;
+      $('controles').hidden = !(temTela || temCam);
+      if (temTela || temCam) pill('vivo', 'Ao vivo');
       else if (e === 'online' || e === 'chegando' || e === 'parou') pill('ok', 'Conectado');
-      else if (e === 'removido' || e === 'desativado') pill('neutro', 'Fora do ar');
-      else pill('alerta', e === 'conectando' ? 'Conectando…' : 'Aguardando');
+      else if (e === 'removido' || e === 'desativado' || e === 'recusado') pill('neutro', 'Fora do ar');
+      else pill('alerta', e === 'conectando' || e === 'entrando' ? 'Conectando…' : 'Aguardando');
       atualizarTitulo(); atualizarSom(); manterAcordado();
     }
     function atualizarTitulo() {
       var t = hostNome ? 'Tela de ' + hostNome : 'Tela do seu amigo';
       $('tituloSala').textContent = t;
-      document.title = (estadoV === 'ao-vivo' ? '● ' : '') + t + ' · Telinha';
+      document.title = (estadoV === 'ao-vivo' || !videoCam.hidden ? '● ' : '') + t + ' · Telinha';
     }
     function atualizarSom() {
       var mudo = video.muted || video.volume === 0;
@@ -847,7 +1146,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
     // Celular não apaga a tela enquanto o vídeo está passando.
     function manterAcordado() {
       if (!('wakeLock' in navigator)) return;
-      if (estadoV === 'ao-vivo' && document.visibilityState === 'visible') {
+      if ((estadoV === 'ao-vivo' || !videoCam.hidden) && document.visibilityState === 'visible') {
         if (!trava) navigator.wakeLock.request('screen').then(function (t) { trava = t; t.addEventListener('release', function () { trava = null; }); }, function () {});
       } else if (trava) { trava.release().catch(function () {}); trava = null; }
     }
@@ -874,7 +1173,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       video.srcObject = null;
     }
     function encerrarTudo(e) {
-      fim = true; clearTimeout(tConectar); fecharCall();
+      fim = true; clearTimeout(tConectar); fecharCall(); fecharCam();
       if (conn) { try { conn.close(); } catch (err) {} conn = null; }
       if (peer) { try { peer.destroy(); } catch (err) {} }
       setEstado(e);
@@ -914,7 +1213,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       if (peer.disconnected) { try { peer.reconnect(); } catch (e) { criarPeer(); } return; }
       if (conn && (conn.open || conn.__pendente)) return;
       if (!estadoV || estadoV === 'sem-servidor') setEstado('conectando');
-      var c = peer.connect(alvo, { reliable: true, serialization: 'json', metadata: { nome: nome } });
+      var c = peer.connect(alvo, { reliable: true, serialization: 'json', metadata: { nome: nome, dispositivo: dispositivo } });
       if (!c) { agendar(conectar, 3000); return; }
       conn = c; c.__pendente = true;
       var limite = setTimeout(function () {
@@ -926,7 +1225,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
         clearTimeout(limite);
         if (conn !== c) { try { c.close(); } catch (e) {} return; }
         c.__pendente = false; c.__abriu = true; falhas = 0; jaViuHost = true;
-        if (estadoV !== 'ao-vivo') setEstado(aoVivo ? 'chegando' : 'online');
+        if (estadoV !== 'ao-vivo') setEstado(aoVivo ? 'chegando' : 'entrando');
       });
       c.on('data', function (m) { if (conn === c) tratar(m); });
       c.on('close', function () {
@@ -935,7 +1234,7 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
         conn = null; c.__pendente = false;
         if (fim) return;
         if (cheia) { cheia = false; setEstado('cheia'); agendar(conectar, 15000); return; }
-        if (c.__abriu) { fecharCall(); aoVivo = false; setEstado('host-saiu'); }
+        if (c.__abriu) { fecharCall(); fecharCam(); aoVivo = false; setEstado('host-saiu'); }
         else { falhas++; if (falhas >= 2) setEstado('rede'); }  // fechou sem abrir = a rede não deixou conectar
         agendar(conectar, 3000);
       });
@@ -946,15 +1245,19 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
       if (m.t === 'estado') {
         var eraVivo = aoVivo;
         hostNome = limparNome(m.host); aoVivo = !!m.aoVivo;
+        if (!m.camera) fecharCam();
         if (!aoVivo) { fecharCall(); setEstado(eraVivo ? 'parou' : 'online'); }
         else if (!call) setEstado('chegando');
         else atualizarTitulo();
-      } else if (m.t === 'removido') encerrarTudo('removido');
+      } else if (m.t === 'aguarde') { hostNome = limparNome(m.host); setEstado('aguardando'); }
+      else if (m.t === 'recusado') { hostNome = limparNome(m.host) || hostNome; encerrarTudo('recusado'); }
+      else if (m.t === 'removido') encerrarTudo('removido');
       else if (m.t === 'desativado') encerrarTudo('desativado');
       else if (m.t === 'cheio') cheia = true;
     }
     function atender(c) {
       if (fim || c.peer !== alvo) { try { c.close(); } catch (e) {} return; }
+      if (c.metadata && c.metadata.t === 'camera') { atenderCamera(c); return; }
       var antigo = call; call = c; ultStats = null;
       if (antigo && antigo !== c) { try { antigo.close(); } catch (e) {} }
       c.answer(undefined, { sdpTransform: ajustarSdp });
@@ -973,6 +1276,26 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
         } else setEstado('parou');
       });
       c.on('error', function () {});
+    }
+    function atenderCamera(c) {
+      var antiga = callCam; callCam = c;
+      if (antiga && antiga !== c) { try { antiga.close(); } catch (e) {} }
+      c.answer();
+      c.on('stream', function (s) {
+        if (callCam !== c) return;
+        if (videoCam.srcObject !== s) videoCam.srcObject = s;
+        videoCam.muted = true;
+        var pr = videoCam.play(); if (pr && pr.catch) pr.catch(function () {});
+        atualizarPalco();
+      });
+      c.on('close', function () { if (callCam !== c) return; callCam = null; videoCam.srcObject = null; atualizarPalco(); });
+      c.on('error', function () {});
+    }
+    function fecharCam() {
+      var c = callCam; callCam = null;
+      if (c) { try { c.close(); } catch (e) {} }
+      videoCam.srcObject = null;
+      atualizarPalco();
     }
     function coletarStats() {
       var c = call;
@@ -1016,7 +1339,8 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
         else video.requestPictureInPicture().catch(function () {});
       });
     }
-    palco.addEventListener('dblclick', function (e) { if (estadoV === 'ao-vivo' && !e.target.closest('.controles') && !e.target.closest('.ativar-som')) telaCheia(); });
+    palco.addEventListener('dblclick', function (e) { if (!$('controles').hidden && !e.target.closest('.controles') && !e.target.closest('.ativar-som') && !e.target.closest('.bolha')) telaCheia(); });
+    videoCam.addEventListener('click', function () { if (!palco.classList.contains('so-camera')) videoCam.classList.toggle('grande'); });
     palco.addEventListener('mousemove', mostrarControles);
     palco.addEventListener('touchstart', mostrarControles, { passive: true });
     palco.addEventListener('mouseleave', function () { palco.classList.remove('mostrar'); });
@@ -1038,7 +1362,8 @@ input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, tr
     window.__telinha = {
       modo: 'espectador',
       estado: function () { return estadoV; },
-      stats: function () { return ultimoStats; }
+      stats: function () { return ultimoStats; },
+      camera: function () { return videoCam.hidden ? '' : (palco.classList.contains('so-camera') ? 'sozinha' : 'bolha'); }
     };
   }
 
