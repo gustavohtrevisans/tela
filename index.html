@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telinha</title>
+<meta name="description" content="Compartilhe sua tela com os amigos por um link. O vídeo vai direto entre vocês.">
+<meta property="og:title" content="Telinha">
+<meta property="og:description" content="Abra para assistir a tela do seu amigo ao vivo.">
+<meta name="theme-color" content="#0c0e13">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M11 3l5 5 5-5' stroke='%23ffb03f' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='3' y='8' width='26' height='20' rx='5' fill='%23ffb03f'/%3E%3Crect x='7' y='12' width='15' height='12' rx='2.5' fill='%230c0e13'/%3E%3Ccircle cx='25' cy='15' r='1.7' fill='%230c0e13'/%3E%3Ccircle cx='25' cy='21' r='1.7' fill='%230c0e13'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: palco 16:9 com o painel do anfitrião ao lado (empilha no celular); quem assiste ganha o palco inteiro.
+   Visual de TV de tubo: fundo azul-noite, brilho âmbar e as barras de "fora do ar" quando não há imagem. */
+:root {
+  --tinta: #0c0e13;
+  --placa: #141822;
+  --risco: #252b39;
+  --giz: #edf0f6;
+  --nevoa: #98a0b3;
+  --ambar: #ffb03f;
+  --vivo: #ff4d5a;
+  --vivo-claro: #ffc9ce;
+  --ok: #43d197;
+  --preto: #050608;
+  --veu: rgba(5, 6, 8, 0.74);
+  --f-titulo: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-texto: "Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; min-height: 100%; display: flex; flex-direction: column;
+  background: var(--tinta); color: var(--giz);
+  font: 15px/1.5 var(--f-texto); -webkit-font-smoothing: antialiased;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--ambar); outline-offset: 2px; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---------- topo ---------- */
+.topo { display: flex; align-items: center; gap: 16px; padding-block: 14px; border-bottom: 1px solid var(--risco); }
+.marca { display: flex; align-items: center; gap: 10px; color: var(--ambar); text-decoration: none; flex: none; }
+.marca svg { width: 30px; height: 30px; }
+.marca span { font: 800 23px/1 var(--f-titulo); letter-spacing: -0.02em; color: var(--giz); }
+.titulo-sala { flex: 1; min-width: 0; font-weight: 600; color: var(--nevoa); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--risco); font-size: 13px; font-weight: 600; white-space: nowrap; flex: none; }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--nevoa); }
+.pill[data-tom="ok"] i { background: var(--ok); }
+.pill[data-tom="alerta"] i { background: var(--ambar); }
+.pill[data-tom="vivo"] { border-color: color-mix(in srgb, var(--vivo) 55%, transparent); color: var(--vivo-claro); }
+.pill[data-tom="vivo"] i { background: var(--vivo); animation: pulso 1.5s ease-in-out infinite; }
+@keyframes pulso { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--vivo) 70%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+
+main { flex: 1; width: 100%; max-width: 1360px; margin: 0 auto; padding-block: 22px 30px; }
+
+/* ---------- palco ---------- */
+.palco { position: relative; aspect-ratio: 16 / 9; max-width: 100%; background: var(--preto); border: 1px solid var(--risco); border-radius: 14px; overflow: hidden; }
+.palco video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--preto); }
+.fora-do-ar { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: var(--tinta); }
+.barras { position: absolute; inset: 0; opacity: 0.15;
+  background: linear-gradient(90deg, #c0c0c0 0 14.3%, #c0c000 0 28.6%, #00c0c0 0 42.9%, #00c000 0 57.1%, #c000c0 0 71.4%, #c00000 0 85.7%, #0000c0 0); }
+.barras::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.45) 0 1px, transparent 1px 3px); }
+.vazio-texto { position: relative; max-width: 36ch; }
+.vazio-titulo { margin: 0 0 8px; font: 700 clamp(20px, 3.2vw, 32px)/1.15 var(--f-titulo); letter-spacing: -0.01em; text-wrap: balance; }
+.vazio-sub { margin: 0; color: var(--nevoa); text-wrap: balance; }
+.selo-captura { position: absolute; left: 12px; bottom: 12px; max-width: calc(100% - 24px); padding: 6px 10px; border-radius: 8px; background: var(--veu); font: 12px/1.3 var(--f-mono); color: var(--giz); }
+
+/* ---------- botões e campos ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--risco); background: var(--placa); color: var(--giz); font: 600 14.5px/1 var(--f-texto); cursor: pointer; transition: background-color .15s, border-color .15s; }
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn:hover { border-color: color-mix(in srgb, var(--giz) 28%, var(--risco)); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn.primario { background: var(--ambar); border-color: var(--ambar); color: var(--tinta); }
+.btn.primario:hover { background: color-mix(in srgb, var(--ambar) 85%, var(--giz)); }
+.btn.perigo { color: var(--vivo-claro); border-color: color-mix(in srgb, var(--vivo) 45%, var(--risco)); }
+.btn.compacto { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.btn-icone { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 9px; border: 0; background: transparent; color: var(--giz); cursor: pointer; flex: none; }
+.btn-icone:hover { background: color-mix(in srgb, var(--giz) 12%, transparent); }
+.btn-icone svg { width: 20px; height: 20px; }
+.link-botao { background: none; border: 0; padding: 0; color: var(--giz); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+input[type="text"] { width: 100%; min-height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--risco); background: var(--placa); color: var(--giz); font: 15px var(--f-texto); }
+input[type="text"]::placeholder { color: color-mix(in srgb, var(--nevoa) 70%, transparent); }
+
+/* ---------- anfitrião ---------- */
+.casa { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 26px; align-items: start; }
+.acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.aviso { flex-basis: 100%; margin: 2px 0 0; min-height: 1.5em; color: var(--nevoa); }
+.aviso[data-tom="erro"] { color: var(--vivo-claro); }
+.painel { display: flex; flex-direction: column; gap: 24px; }
+.bloco { display: flex; flex-direction: column; gap: 10px; }
+.rotulo { display: flex; align-items: center; gap: 8px; margin: 0; font: 600 11.5px/1.2 var(--f-texto); letter-spacing: 0.09em; text-transform: uppercase; color: var(--nevoa); }
+.contagem { padding: 3px 7px; border-radius: 999px; border: 1px solid var(--risco); background: var(--placa); font: 500 12px/1 var(--f-mono); letter-spacing: 0; color: var(--giz); }
+.link-caixa { display: flex; gap: 8px; }
+.link-caixa { align-items: stretch; }
+.link-caixa code { flex: 1; min-width: 0; display: flex; align-items: center; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--risco); background: var(--placa); font: 13px/1.35 var(--f-mono); color: var(--ambar); word-break: break-all; user-select: all; }
+.nota { margin: 0; font-size: 13px; color: var(--nevoa); }
+.nota.alerta { color: var(--vivo-claro); }
+.presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.preset { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--risco); background: var(--placa); color: var(--giz); font: inherit; text-align: left; cursor: pointer; }
+.preset b { font-size: 14px; font-weight: 600; }
+.preset span { font: 12px/1.2 var(--f-mono); color: var(--nevoa); }
+.preset[aria-checked="true"] { border-color: var(--ambar); background: color-mix(in srgb, var(--ambar) 10%, var(--placa)); }
+.preset[aria-checked="true"] span { color: var(--ambar); }
+.check { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ambar); }
+.lista { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.viewer { display: flex; align-items: center; gap: 10px; padding: 8px 6px 8px 12px; border-radius: 10px; border: 1px solid var(--risco); background: var(--placa); }
+.viewer .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--nevoa); flex: none; }
+.viewer[data-estado="assistindo"] .ponto { background: var(--ok); }
+.viewer[data-estado="conectando"] .ponto { background: var(--ambar); }
+.viewer-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.viewer-nome { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.viewer-stats { font: 12px/1.35 var(--f-mono); color: var(--nevoa); font-variant-numeric: tabular-nums; }
+.dica { margin-top: 18px; max-width: 70ch; gap: 8px; padding: 14px; border-radius: 12px; border: 1px dashed var(--risco); font-size: 13px; color: var(--nevoa); }
+.dica p { margin: 0; }
+.dica b { color: var(--giz); font-weight: 600; }
+
+/* ---------- quem assiste ---------- */
+.sala { display: flex; flex-direction: column; gap: 14px; }
+.palco.grande { width: min(100%, calc((100vh - 200px) * 16 / 9)); width: min(100%, calc((100dvh - 200px) * 16 / 9)); min-width: min(100%, 320px); margin-inline: auto; border-radius: 12px; }
+.palco.grande:not(.mostrar) video { cursor: none; }
+.controles { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 6px; padding: 30px max(10px, env(safe-area-inset-right, 0px)) 10px max(10px, env(safe-area-inset-left, 0px)); background: linear-gradient(transparent, var(--veu)); opacity: 0; transition: opacity .25s; }
+.palco.mostrar .controles, .controles:hover, .controles:focus-within { opacity: 1; }
+.controles input[type="range"] { width: 110px; accent-color: var(--ambar); }
+.controles .stats { min-width: 0; font-size: 12px; color: var(--giz); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.espaco { flex: 1; }
+.ativar-som { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); white-space: nowrap; display: inline-flex; align-items: center; gap: 10px; padding: 15px 24px; border-radius: 999px; border: 0; background: var(--ambar); color: var(--tinta); font: 700 16px/1 var(--f-texto); cursor: pointer; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5); }
+.ativar-som svg { width: 22px; height: 22px; }
+.palco:fullscreen { border: 0; border-radius: 0; aspect-ratio: auto; }
+.sob-palco { width: 100%; max-width: 1360px; margin-inline: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 22px; }
+.sob-palco p { margin: 0; }
+#formNome { display: flex; gap: 8px; }
+#formNome input { width: 200px; }
+.erro-fatal { display: grid; place-items: center; text-align: center; min-height: 50vh; }
+.erro-fatal div { max-width: 44ch; }
+
+.rodape { padding-block: 14px 18px; border-top: 1px solid var(--risco); text-align: center; font-size: 12.5px; color: var(--nevoa); }
+
+@media (max-width: 920px) { .casa { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) {
+  .presets { grid-template-columns: 1fr; }
+  .controles input[type="range"] { display: none; }
+  .marca span { font-size: 20px; }
+  .ativar-som { padding: 11px 16px; font-size: 14px; gap: 8px; }
+  .ativar-som svg { width: 18px; height: 18px; }
+  .btn { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body data-modo="carregando">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-logo" viewBox="0 0 32 32"><path d="M11 3l5 5 5-5" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="8" width="26" height="20" rx="5" fill="currentColor"/><rect x="7" y="12" width="15" height="12" rx="2.5" fill="var(--tinta)"/><circle cx="25" cy="15" r="1.7" fill="var(--tinta)"/><circle cx="25" cy="21" r="1.7" fill="var(--tinta)"/></symbol>
+    <symbol id="i-tela" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></g></symbol>
+    <symbol id="i-trocar" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5"/></g></symbol>
+    <symbol id="i-parar" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></symbol>
+    <symbol id="i-copia" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/></g></symbol>
+    <symbol id="i-som" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h4l5 4v-13l-5 4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></g></symbol>
+    <symbol id="i-mudo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h4l5 4v-13l-5 4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/></g></symbol>
+    <symbol id="i-cheia" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></g></symbol>
+    <symbol id="i-pip" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/></g><rect x="12" y="11" width="7" height="6" rx="1.2" fill="currentColor"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<header class="topo gutter">
+  <a class="marca" href="./" aria-label="Telinha, início"><svg aria-hidden="true"><use href="#i-logo"/></svg><span>telinha</span></a>
+  <div class="titulo-sala" id="tituloSala"></div>
+  <span class="pill" id="pill" data-tom="neutro"><i></i><span id="pillTexto">Carregando…</span></span>
+</header>
+
+<!-- ============ ANFITRIÃO (quem compartilha) ============ -->
+<main id="anfitriao" class="casa gutter" hidden>
+  <section>
+    <div class="palco" id="palcoA">
+      <video id="previa" playsinline muted autoplay></video>
+      <div class="fora-do-ar" id="vazioA">
+        <div class="barras" aria-hidden="true"></div>
+        <div class="vazio-texto">
+          <p class="vazio-titulo">Sua tela aparece aqui</p>
+          <p class="vazio-sub">Clique em Compartilhar minha tela e escolha uma aba, uma janela ou a tela inteira.</p>
+        </div>
+      </div>
+      <div class="selo-captura" id="infoCaptura" hidden></div>
+    </div>
+    <div class="acoes">
+      <button id="btnCompartilhar" class="btn primario" type="button"><svg aria-hidden="true"><use href="#i-tela"/></svg>Compartilhar minha tela</button>
+      <button id="btnTrocar" class="btn" type="button" hidden><svg aria-hidden="true"><use href="#i-trocar"/></svg>Trocar o que compartilho</button>
+      <button id="btnParar" class="btn perigo" type="button" hidden><svg aria-hidden="true"><use href="#i-parar"/></svg>Parar</button>
+      <p class="aviso" id="avisoA" role="status" aria-live="polite"></p>
+    </div>
+    <div class="bloco dica">
+      <p><b>Voz:</b> continuem conversando na call do Discord. No Brasil só o vídeo de lá foi suspenso.</p>
+      <p><b>Eco:</b> se seus amigos ouvirem a própria voz atrasada, é a call indo junto no som do computador. Compartilhe só uma aba do navegador ou desmarque o som.</p>
+    </div>
+  </section>
+
+  <aside class="painel">
+    <section class="bloco">
+      <h2 class="rotulo">Link pra mandar no grupo</h2>
+      <div class="link-caixa">
+        <code id="linkSala"></code>
+        <button id="btnCopiar" class="btn compacto" type="button"><svg aria-hidden="true"><use href="#i-copia"/></svg><span>Copiar</span></button>
+      </div>
+      <p class="nota">O link não muda. Quem tiver ele pode assistir. <button id="btnNovoLink" class="link-botao" type="button">Gerar link novo</button></p>
+      <p class="nota alerta" id="avisoArquivo" hidden>Você abriu este arquivo direto do computador. Seus amigos precisam do endereço do site publicado, não deste arquivo.</p>
+    </section>
+
+    <section class="bloco">
+      <label class="rotulo" for="nomeHost">Seu nome</label>
+      <input id="nomeHost" type="text" maxlength="24" placeholder="Ex.: Juarez" autocomplete="nickname">
+      <p class="nota">Seus amigos veem “<span id="previaNome"></span>”.</p>
+    </section>
+
+    <section class="bloco">
+      <h2 class="rotulo">Qualidade</h2>
+      <div class="presets" id="presets" role="radiogroup" aria-label="Qualidade"></div>
+      <label class="check"><input id="chkSom" type="checkbox"> Enviar o som do computador</label>
+      <p class="nota mono" id="estimativa"></p>
+    </section>
+
+    <section class="bloco">
+      <h2 class="rotulo">Assistindo agora <span class="contagem mono" id="contagem">0</span></h2>
+      <ul class="lista" id="listaViewers"></ul>
+      <p class="nota" id="listaVazia">Ninguém ainda. Mande o link no grupo.</p>
+    </section>
+
+  </aside>
+</main>
+
+<!-- ============ ESPECTADOR (quem assiste) ============ -->
+<main id="espectador" class="sala gutter" hidden>
+  <div class="palco grande" id="palcoV">
+    <video id="tela" playsinline autoplay muted></video>
+    <div class="fora-do-ar" id="estadoV">
+      <div class="barras" aria-hidden="true"></div>
+      <div class="vazio-texto" role="status" aria-live="polite">
+        <p class="vazio-titulo" id="estadoTitulo">Conectando…</p>
+        <p class="vazio-sub" id="estadoSub"></p>
+      </div>
+    </div>
+    <button class="ativar-som" id="btnAtivarSom" type="button" hidden><svg aria-hidden="true"><use href="#i-som"/></svg>Clique para ouvir</button>
+    <div class="controles" id="controles" hidden>
+      <button class="btn-icone" id="btnMudo" type="button" aria-label="Ligar o som"><svg aria-hidden="true"><use href="#i-mudo"/></svg></button>
+      <input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume">
+      <span class="stats mono" id="statsV"></span>
+      <span class="espaco"></span>
+      <button class="btn-icone" id="btnPip" type="button" aria-label="Janela flutuante" title="Janela flutuante" hidden><svg aria-hidden="true"><use href="#i-pip"/></svg></button>
+      <button class="btn-icone" id="btnCheia" type="button" aria-label="Tela cheia" title="Tela cheia"><svg aria-hidden="true"><use href="#i-cheia"/></svg></button>
+    </div>
+  </div>
+  <div class="sob-palco">
+    <p>Você aparece como <b id="meuNome"></b>. <button id="btnTrocarNome" class="link-botao" type="button">Trocar nome</button></p>
+    <form id="formNome" hidden><input id="inputNome" type="text" maxlength="24" aria-label="Seu nome"><button class="btn compacto" type="submit">Salvar</button></form>
+    <p class="nota">Funciona no celular também. Toque duas vezes no vídeo para tela cheia.</p>
+  </div>
+</main>
+
+<main id="erroFatal" class="erro-fatal gutter" hidden>
+  <div>
+    <p class="vazio-titulo" id="erroTitulo">Não deu para carregar a Telinha</p>
+    <p class="vazio-sub" id="erroSub">Confira sua internet e recarregue a página. Bloqueador de anúncios às vezes atrapalha.</p>
+  </div>
+</main>
+
+<footer class="rodape gutter">O vídeo vai direto entre vocês e não é gravado.</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // ------------------------------------------------------------------ base
+  var PEERJS = [
+    'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js',
+    'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js'
+  ];
+  var PEERJS_SRI = 'sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR';
+  var PREFIXO = 'telinha-v1-';
+  var ALFABETO = 'abcdefghjkmnpqrstuvwxyz23456789';
+  var CODIGO_OK = /^[a-z0-9]{6,16}$/;
+  var MAX_VIEWERS = 10;
+  var AUDIO_KBPS = 128;
+  var ANIMAIS = ['Capivara', 'Tucano', 'Jabuti', 'Mico-leão', 'Arara', 'Quati', 'Tatu-bola', 'Boto', 'Onça-pintada', 'Sabiá',
+    'Bem-te-vi', 'Lobo-guará', 'Tamanduá', 'Sagui', 'Jacaré', 'Preguiça', 'Ariranha', 'Jaguatirica', 'Seriema', 'Peixe-boi'];
+  var PRESETS = {
+    jogo:   { nome: 'Jogo / vídeo',   detalhe: '1080p · 60 fps', w: 1920, h: 1080, fps: 60, kbps: 6000, hint: 'motion', deg: 'maintain-framerate' },
+    normal: { nome: 'Equilibrado',    detalhe: '1080p · 30 fps', w: 1920, h: 1080, fps: 30, kbps: 3500, hint: 'motion', deg: 'balanced' },
+    texto:  { nome: 'Texto nítido',   detalhe: '1440p · 15 fps', w: 2560, h: 1440, fps: 15, kbps: 3000, hint: 'text',   deg: 'maintain-resolution' },
+    leve:   { nome: 'Internet fraca', detalhe: '720p · 30 fps',  w: 1280, h: 720,  fps: 30, kbps: 1500, hint: 'motion', deg: 'balanced' }
+  };
+  var ERROS_SERVIDOR = ['network', 'server-error', 'socket-error', 'socket-closed', 'disconnected', 'ssl-unavailable'];
+  // Servidor de retransmissão (TURN) para quem está em rede que bloqueia conexão direta (alguns 4G/5G, redes de empresa).
+  // Os gratuitos sem cadastro morreram (os do PeerJS e o openrelay, conferido em 31/10/2026). Com uma conta grátis
+  // (ExpressTURN, Metered ou Cloudflare), ponha aqui: { urls: 'turn:host:3478', username: '...', credential: '...' }
+  var TURN_EXTRA = [];
+  // ?relay=1 força o caminho pelo TURN: serve para testar o servidor de retransmissão.
+  var SO_RELAY = new URLSearchParams(location.search).get('relay') === '1';
+  var ICE = {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+      { urls: 'stun:stun.cloudflare.com:3478' }
+    ].concat(TURN_EXTRA),
+    iceTransportPolicy: SO_RELAY && TURN_EXTRA.length ? 'relay' : 'all'
+  };
+  var OPCOES_PEER = { config: ICE, debug: 1 };
+
+  function $(id) { return document.getElementById(id); }
+  function ler(k) { try { return localStorage.getItem('telinha.' + k); } catch (e) { return null; } }
+  function guardar(k, v) { try { localStorage.setItem('telinha.' + k, v); } catch (e) {} }
+  function limparNome(s) { return typeof s === 'string' ? s.replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24) : ''; }
+  function novoCodigo() {
+    var a = new Uint32Array(8); crypto.getRandomValues(a);
+    return Array.prototype.map.call(a, function (n) { return ALFABETO[n % ALFABETO.length]; }).join('');
+  }
+  var fmt1 = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+  function mbps(kbps) { return kbps < 1000 ? Math.round(kbps) + ' kbps' : fmt1.format(kbps / 1000) + ' Mbps'; }
+  function pill(tom, texto) { $('pill').dataset.tom = tom; $('pillTexto').textContent = texto; }
+  function textoStats(s) {
+    var p = [];
+    if (s.w && s.h) p.push(s.w + '×' + s.h);
+    if (s.fps != null) p.push(Math.round(s.fps) + ' fps');
+    if (s.kbps != null) p.push(mbps(s.kbps));
+    if (s.conectado) p.push(s.relay ? 'via relay' : 'direto');
+    return p.join(' · ');
+  }
+  function lerStats(rep, tipo) {
+    var rtp = null, par = null;
+    rep.forEach(function (s) {
+      if (s.type === tipo && s.kind === 'video') rtp = s;
+      else if (s.type === 'transport' && s.selectedCandidatePairId) par = rep.get(s.selectedCandidatePairId) || par;
+    });
+    if (!par) rep.forEach(function (s) { if (s.type === 'candidate-pair' && s.state === 'succeeded' && (s.nominated || s.selected)) par = s; });
+    var loc = par && rep.get(par.localCandidateId), rem = par && rep.get(par.remoteCandidateId);
+    return { rtp: rtp, conectado: !!par, relay: !!((loc && loc.candidateType === 'relay') || (rem && rem.candidateType === 'relay')) };
+  }
+  // Som em estéreo e com mais bitrate (o padrão do WebRTC é voz em mono).
+  function ajustarSdp(sdp) {
+    try {
+      var m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
+      if (!m) return sdp;
+      var pt = m[1], extra = { 'stereo': '1', 'sprop-stereo': '1', 'maxaveragebitrate': String(AUDIO_KBPS * 1000) };
+      var re = new RegExp('a=fmtp:' + pt + ' ([^\\r\\n]*)');
+      if (re.test(sdp)) {
+        return sdp.replace(re, function (linha, prm) {
+          Object.keys(extra).forEach(function (k) { if (!new RegExp('(^|;)\\s*' + k + '=').test(prm)) prm += ';' + k + '=' + extra[k]; });
+          return 'a=fmtp:' + pt + ' ' + prm;
+        });
+      }
+      return sdp.replace(m[0], m[0] + '\r\na=fmtp:' + pt + ' stereo=1;sprop-stereo=1;maxaveragebitrate=' + extra.maxaveragebitrate);
+    } catch (e) { return sdp; }
+  }
+  function fatal(titulo, sub) {
+    ['anfitriao', 'espectador'].forEach(function (id) { $(id).hidden = true; });
+    $('erroTitulo').textContent = titulo; $('erroSub').textContent = sub || '';
+    $('erroFatal').hidden = false; pill('neutro', 'Fora do ar');
+  }
+
+  window.__telinha = {};
+
+  // ------------------------------------------------------------------ carregar o PeerJS (3 CDNs, mesmo arquivo)
+  function carregarScript(i) {
+    return new Promise(function (ok, falhou) {
+      var s = document.createElement('script');
+      s.src = PEERJS[i]; s.integrity = PEERJS_SRI; s.crossOrigin = 'anonymous';
+      s.onload = function () { window.Peer ? ok() : falhou(new Error('sem Peer')); };
+      s.onerror = function () { s.remove(); falhou(new Error('falhou')); };
+      document.head.appendChild(s);
+    });
+  }
+  function carregarPeerJS(i) {
+    if (i >= PEERJS.length) return Promise.resolve(false);
+    return carregarScript(i).then(function () { return true; }, function () { return carregarPeerJS(i + 1); });
+  }
+
+  function iniciar() {
+    if (!window.RTCPeerConnection) { fatal('Seu navegador não faz vídeo em tempo real', 'Use Chrome, Edge, Firefox ou Safari atualizado.'); return; }
+    var h = '';
+    try { h = decodeURIComponent(location.hash.slice(1)).trim().toLowerCase(); } catch (e) {}
+    if (h && CODIGO_OK.test(h)) espectador(h); else anfitriao();
+  }
+  window.addEventListener('hashchange', function () { location.reload(); });
+
+  // ================================================================== ANFITRIÃO
+  function anfitriao() {
+    document.body.dataset.modo = 'anfitriao';
+    $('anfitriao').hidden = false;
+    document.title = 'Telinha';
+
+    var codigo = ler('codigo');
+    if (!codigo || !CODIGO_OK.test(codigo)) { codigo = novoCodigo(); guardar('codigo', codigo); }
+    var preset = PRESETS[ler('preset')] ? ler('preset') : 'normal';
+    var comSom = ler('som') !== '0';
+    var nomeHost = limparNome(ler('nomeHost') || '');
+    var peer = null, stream = null, aoVivo = false, servidor = 'conectando';
+    var viewers = new Map(), bloqueados = new Set();
+    var tentativasId = 0, tReconectar = null, tNome = null, confirmarAte = 0;
+    var previa = $('previa');
+    var podeCapturar = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+
+    function base() { return location.href.split('#')[0].split('?')[0]; }
+    function linkSala() { return base() + '#' + codigo; }
+    function estado() { return { t: 'estado', aoVivo: aoVivo, host: nomeHost, qualidade: PRESETS[preset].detalhe }; }
+    function enviar(v, msg) { try { if (v.conn && v.conn.open) v.conn.send(msg); } catch (e) {} }
+    function broadcast(msg) { viewers.forEach(function (v) { enviar(v, msg); }); }
+    function aviso(txt, tom) { var el = $('avisoA'); el.textContent = txt || ''; el.dataset.tom = tom || ''; }
+
+    // ---------- desenho
+    function desenharLink() { $('linkSala').textContent = linkSala().replace(/^https?:\/\//, ''); $('linkSala').title = linkSala(); }
+    function desenharNome() { $('previaNome').textContent = nomeHost ? 'Tela de ' + nomeHost : 'Tela do seu amigo'; }
+    function desenharPresets() {
+      var box = $('presets'); box.textContent = '';
+      Object.keys(PRESETS).forEach(function (k) {
+        var p = PRESETS[k], b = document.createElement('button');
+        b.type = 'button'; b.className = 'preset'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(k === preset));
+        var t = document.createElement('b'); t.textContent = p.nome;
+        var d = document.createElement('span'); d.textContent = p.detalhe;
+        b.append(t, d);
+        b.addEventListener('click', function () { mudarPreset(k); });
+        box.append(b);
+      });
+    }
+    function desenharEstimativa() {
+      var p = PRESETS[preset], porAmigo = p.kbps + (comSom ? AUDIO_KBPS : 0), n = viewers.size;
+      $('estimativa').textContent = n
+        ? 'Upload máximo: ' + mbps(porAmigo * n) + ' para ' + n + (n === 1 ? ' amigo' : ' amigos')
+        : 'Cada amigo usa até ' + mbps(porAmigo) + ' do seu upload';
+    }
+    function desenharBotoes() {
+      $('btnCompartilhar').hidden = aoVivo;
+      $('btnCompartilhar').disabled = !podeCapturar;
+      $('btnTrocar').hidden = !aoVivo;
+      $('btnParar').hidden = !aoVivo;
+      $('vazioA').hidden = aoVivo;
+    }
+    function desenharCaptura() {
+      var el = $('infoCaptura'), vt = stream && stream.getVideoTracks()[0];
+      if (!aoVivo || !vt) { el.hidden = true; return; }
+      var st = vt.getSettings ? vt.getSettings() : {};
+      var oque = { monitor: 'a tela inteira', window: 'uma janela', browser: 'uma aba' }[st.displaySurface] || 'a tela';
+      var partes = ['Compartilhando ' + oque];
+      if (st.width && st.height) partes.push(st.width + '×' + st.height);
+      if (st.frameRate) partes.push(Math.round(st.frameRate) + ' fps');
+      var at = stream.getAudioTracks()[0];
+      partes.push(at && at.enabled ? 'com som' : 'sem som');
+      el.textContent = partes.join(' · '); el.hidden = false;
+    }
+    function atualizarPill() {
+      if (aoVivo) pill('vivo', viewers.size ? 'Ao vivo · ' + viewers.size + (viewers.size === 1 ? ' assistindo' : ' assistindo') : 'Ao vivo');
+      else if (servidor === 'ok') pill('ok', 'Pronto');
+      else if (servidor === 'ocupado') pill('alerta', 'Link em uso');
+      else if (servidor === 'caiu') pill('alerta', 'Reconectando…');
+      else pill('neutro', 'Conectando…');
+      document.title = aoVivo ? '● Ao vivo · Telinha' : 'Telinha';
+    }
+    function estadoViewer(v) {
+      if (!aoVivo) return 'esperando';
+      var pc = v.call && v.call.peerConnection;
+      return pc && pc.connectionState === 'connected' ? 'assistindo' : 'conectando';
+    }
+    function criarItem(v) {
+      var li = document.createElement('li'); li.className = 'viewer';
+      var ponto = document.createElement('span'); ponto.className = 'ponto';
+      var info = document.createElement('div'); info.className = 'viewer-info';
+      var nm = document.createElement('span'); nm.className = 'viewer-nome';
+      var sx = document.createElement('span'); sx.className = 'viewer-stats';
+      info.append(nm, sx);
+      var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn-icone';
+      rm.innerHTML = '<svg aria-hidden="true"><use href="#i-x"/></svg>';
+      rm.addEventListener('click', function () { remover(v.id); });
+      li.append(ponto, info, rm);
+      v.el = { li: li, nm: nm, sx: sx, rm: rm };
+      $('listaViewers').append(li);
+    }
+    function desenharViewers() {
+      viewers.forEach(function (v) {
+        if (!v.el) criarItem(v);
+        var st = estadoViewer(v);
+        v.el.li.dataset.estado = st;
+        v.el.nm.textContent = v.nome;
+        v.el.rm.title = 'Remover ' + v.nome; v.el.rm.setAttribute('aria-label', 'Remover ' + v.nome);
+        v.el.sx.textContent = st === 'assistindo' ? (v.stats ? textoStats(v.stats) : 'assistindo')
+          : st === 'conectando' ? 'conectando o vídeo…' : 'na sala, esperando você começar';
+      });
+      $('contagem').textContent = String(viewers.size);
+      $('listaVazia').hidden = viewers.size > 0;
+    }
+    function tudo() { desenharBotoes(); desenharCaptura(); desenharEstimativa(); desenharViewers(); atualizarPill(); }
+
+    // ---------- conexão com o servidor de sinalização (PeerJS)
+    function estadoServidor(s) {
+      servidor = s;
+      if (s === 'ocupado' && tentativasId >= 3) aviso('Esse link está aberto em outra aba ou outro computador. Feche a outra aba ou gere um link novo.', 'erro');
+      else if (s === 'caiu') aviso('Sem conexão com o servidor. Quem já está assistindo continua vendo; tentando reconectar…');
+      else if (s === 'ok' && /servidor|outra aba/.test($('avisoA').textContent)) aviso('');
+      atualizarPill();
+    }
+    function agendarReconexao(ms) {
+      clearTimeout(tReconectar);
+      tReconectar = setTimeout(function () {
+        if (!peer || peer.destroyed) criarPeer();
+        else if (peer.disconnected) { try { peer.reconnect(); } catch (e) { criarPeer(); } }
+      }, ms);
+    }
+    function criarPeer() {
+      clearTimeout(tReconectar);
+      if (peer && !peer.destroyed) { try { peer.destroy(); } catch (e) {} }
+      var p = new window.Peer(PREFIXO + codigo, OPCOES_PEER);
+      peer = p;
+      p.on('open', function () {
+        if (peer !== p) return;
+        tentativasId = 0; estadoServidor('ok');
+        if (aoVivo) viewers.forEach(function (v) { if (!v.call) ligar(v); });
+      });
+      p.on('connection', function (conn) { if (peer === p) aoConectar(conn); else conn.close(); });
+      p.on('call', function (c) { try { c.close(); } catch (e) {} });
+      p.on('disconnected', function () { if (peer === p) { estadoServidor('caiu'); agendarReconexao(2000); } });
+      p.on('error', function (err) {
+        if (peer !== p) return;
+        var t = err && err.type;
+        if (t === 'unavailable-id') {
+          tentativasId++; estadoServidor('ocupado');
+          clearTimeout(tReconectar); tReconectar = setTimeout(criarPeer, tentativasId < 3 ? 2500 : 6000);
+        } else if (t === 'invalid-id') {
+          codigo = novoCodigo(); guardar('codigo', codigo); desenharLink(); agendarReconexao(300);
+        } else if (t === 'browser-incompatible') {
+          fatal('Seu navegador não faz vídeo em tempo real', 'Use Chrome, Edge ou Firefox atualizado.');
+        } else if (ERROS_SERVIDOR.indexOf(t) >= 0) {
+          estadoServidor('caiu'); agendarReconexao(3000);
+        }
+      });
+    }
+
+    // ---------- amigos
+    function aoConectar(conn) {
+      var recusa = bloqueados.has(conn.peer) ? 'removido' : (viewers.size >= MAX_VIEWERS && !viewers.has(conn.peer) ? 'cheio' : '');
+      if (recusa) {
+        conn.on('open', function () { try { conn.send({ t: recusa }); } catch (e) {} setTimeout(function () { conn.close(); }, 500); });
+        return;
+      }
+      conn.on('open', function () {
+        var antigo = viewers.get(conn.peer);
+        if (antigo && antigo.conn !== conn) encerrar(antigo, false);
+        var meta = conn.metadata || {};
+        var v = { id: conn.peer, nome: limparNome(meta.nome) || 'Amigo', conn: conn, call: null, falhas: 0, stats: null, ult: null, el: null };
+        viewers.set(v.id, v);
+        enviar(v, estado());
+        if (aoVivo) ligar(v);
+        tudo();
+      });
+      conn.on('data', function (m) {
+        var v = viewers.get(conn.peer);
+        if (!v || v.conn !== conn || !m || typeof m !== 'object') return;
+        if (m.t === 'nome') { var n = limparNome(m.nome); if (n) { v.nome = n; desenharViewers(); } }
+        else if (m.t === 'refazer') { if (aoVivo && (!v.call || !v.call.open)) ligar(v); }
+      });
+      conn.on('close', function () { var v = viewers.get(conn.peer); if (v && v.conn === conn) encerrar(v); });
+      conn.on('error', function () {});
+    }
+    function encerrar(v, redesenhar) {
+      viewers.delete(v.id);
+      var c = v.call; v.call = null;
+      if (c) { try { c.close(); } catch (e) {} }
+      try { v.conn.close(); } catch (e) {}
+      if (v.el) v.el.li.remove();
+      if (redesenhar !== false) tudo();
+    }
+    function remover(id) {
+      var v = viewers.get(id); if (!v) return;
+      bloqueados.add(id); enviar(v, { t: 'removido' });
+      setTimeout(function () { if (viewers.get(id) === v) encerrar(v); }, 300);
+    }
+    function ligar(v) {
+      if (!stream || !peer || peer.destroyed) return;
+      if (v.call) { var velho = v.call; v.call = null; try { velho.close(); } catch (e) {} }
+      var call = peer.call(v.id, stream, { sdpTransform: ajustarSdp, metadata: { t: 'tela' } });
+      if (!call) return;
+      v.call = call;
+      var pc = call.peerConnection;
+      if (pc) pc.addEventListener('connectionstatechange', function () {
+        if (v.call !== call) return;
+        if (pc.connectionState === 'connected') { v.falhas = 0; aplicarQualidade(pc); }
+        desenharViewers();
+      });
+      call.on('close', function () {
+        if (v.call !== call) return;
+        v.call = null; v.stats = null; v.ult = null;
+        if (aoVivo && viewers.get(v.id) === v && v.conn.open && v.falhas < 6) {
+          v.falhas++;
+          setTimeout(function () { if (aoVivo && viewers.get(v.id) === v && !v.call) ligar(v); }, 1500 * v.falhas);
+        }
+        desenharViewers();
+      });
+      call.on('error', function () {});
+      desenharViewers();
+    }
+    function aplicarQualidade(pc) {
+      if (!pc || !pc.getSenders) return;
+      var p = PRESETS[preset];
+      pc.getSenders().forEach(function (s) {
+        var tr = s.track, prm;
+        if (!tr) return;
+        try { prm = s.getParameters(); } catch (e) { return; }
+        if (!prm.encodings || !prm.encodings.length) return;
+        if (tr.kind === 'video') {
+          prm.encodings[0].maxBitrate = p.kbps * 1000;
+          prm.encodings[0].maxFramerate = p.fps;
+          prm.degradationPreference = p.deg;
+        } else {
+          prm.encodings[0].maxBitrate = AUDIO_KBPS * 1000;
+        }
+        s.setParameters(prm).catch(function () {
+          try { delete prm.degradationPreference; s.setParameters(prm).catch(function () {}); } catch (e) {}
+        });
+      });
+    }
+    // Troca a captura sem derrubar quem assiste (só faltando trilha de áudio/vídeo é que liga de novo).
+    function trocarTracks(pc, novo) {
+      var tipos = {};
+      pc.getTransceivers().forEach(function (t) {
+        if (t.stopped || t.currentDirection === 'stopped') return;
+        var k = t.receiver && t.receiver.track && t.receiver.track.kind;
+        if (k && !tipos[k]) tipos[k] = t;
+      });
+      var a = novo.getAudioTracks()[0] || null, vi = novo.getVideoTracks()[0] || null;
+      if ((a && !tipos.audio) || (vi && !tipos.video)) return false;
+      if (tipos.audio) tipos.audio.sender.replaceTrack(a).catch(function () {});
+      if (tipos.video) tipos.video.sender.replaceTrack(vi).catch(function () {});
+      return true;
+    }
+
+    // ---------- captura
+    function capturar() {
+      var p = PRESETS[preset];
+      var opcoes = {
+        video: { width: { max: p.w }, height: { max: p.h }, frameRate: { ideal: p.fps, max: p.fps } },
+        audio: comSom ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false } : false,
+        selfBrowserSurface: 'exclude', surfaceSwitching: 'include', systemAudio: comSom ? 'include' : 'exclude'
+      };
+      return navigator.mediaDevices.getDisplayMedia(opcoes).catch(function (e) {
+        // Navegador que não captura som de tela recusa o pedido inteiro: tenta só com imagem.
+        if (comSom && e && (e.name === 'TypeError' || e.name === 'NotSupportedError' || e.name === 'NotReadableError')) {
+          opcoes.audio = false; delete opcoes.systemAudio;
+          return navigator.mediaDevices.getDisplayMedia(opcoes);
+        }
+        throw e;
+      });
+    }
+    function compartilhar() {
+      if (!podeCapturar) return;
+      var trocando = aoVivo;
+      $('btnCompartilhar').disabled = true; $('btnTrocar').disabled = true;
+      capturar().then(function (novo) { usarStream(novo); }, function (e) {
+        var n = e && e.name;
+        if (n === 'NotAllowedError' || n === 'AbortError') aviso(trocando ? 'Troca cancelada. Continua a mesma tela.' : 'Compartilhamento cancelado.');
+        else aviso('Não consegui capturar a tela (' + ((e && e.message) || n || 'erro') + ').', 'erro');
+      }).then(function () { $('btnCompartilhar').disabled = !podeCapturar; $('btnTrocar').disabled = false; });
+    }
+    function usarStream(novo) {
+      var p = PRESETS[preset], vt = novo.getVideoTracks()[0], at = novo.getAudioTracks()[0];
+      if (vt) {
+        try { vt.contentHint = p.hint; } catch (e) {}
+        vt.addEventListener('ended', function () { if (stream === novo) parar('A captura foi encerrada.'); });
+      }
+      if (at) at.enabled = comSom;
+      var antigo = stream;
+      stream = novo; aoVivo = true;
+      previa.srcObject = novo; previa.muted = true;
+      var pr = previa.play(); if (pr && pr.catch) pr.catch(function () {});
+      viewers.forEach(function (v) {
+        if (v.call && v.call.peerConnection && trocarTracks(v.call.peerConnection, novo)) return;
+        ligar(v);
+      });
+      if (antigo && antigo !== novo) antigo.getTracks().forEach(function (t) { t.stop(); });
+      aviso(comSom && !at ? 'Sem som: na janela de escolha, marque “Compartilhar áudio”. Ele só aparece para aba ou tela inteira.' : '');
+      broadcast(estado());
+      tudo();
+    }
+    function parar(msg) {
+      aoVivo = false;
+      var s = stream; stream = null;
+      viewers.forEach(function (v) { var c = v.call; v.call = null; v.stats = null; v.ult = null; if (c) { try { c.close(); } catch (e) {} } });
+      if (s) s.getTracks().forEach(function (t) { t.stop(); });
+      previa.srcObject = null;
+      broadcast(estado());
+      aviso(msg || '');
+      tudo();
+    }
+    function mudarPreset(k) {
+      if (!PRESETS[k] || k === preset) return;
+      preset = k; guardar('preset', k);
+      desenharPresets(); desenharEstimativa();
+      var p = PRESETS[k], vt = stream && stream.getVideoTracks()[0];
+      if (vt) {
+        try { vt.contentHint = p.hint; } catch (e) {}
+        var r = vt.applyConstraints({ width: { max: p.w }, height: { max: p.h }, frameRate: { ideal: p.fps, max: p.fps } });
+        if (r && r.then) r.then(desenharCaptura, function () {});
+      }
+      viewers.forEach(function (v) { if (v.call) aplicarQualidade(v.call.peerConnection); });
+      broadcast(estado());
+    }
+
+    // ---------- números ao vivo
+    function coletarStats() {
+      if (aoVivo) desenharCaptura();
+      var lista = [];
+      viewers.forEach(function (v) { lista.push(v); });
+      Promise.all(lista.map(function (v) {
+        var c = v.call;
+        if (!c || !c.peerConnection) { v.stats = null; return null; }
+        return c.peerConnection.getStats().then(function (rep) {
+          var r = lerStats(rep, 'outbound-rtp'), o = r.rtp, kbps = null;
+          if (o && v.ult && o.timestamp > v.ult.ts) kbps = ((o.bytesSent - v.ult.bytes) * 8) / (o.timestamp - v.ult.ts);
+          v.ult = o ? { bytes: o.bytesSent, ts: o.timestamp } : null;
+          v.stats = o ? { w: o.frameWidth, h: o.frameHeight, fps: o.framesPerSecond, kbps: kbps, relay: r.relay, conectado: r.conectado } : null;
+        }, function () {});
+      })).then(desenharViewers);
+    }
+
+    // ---------- eventos da página
+    $('btnCompartilhar').addEventListener('click', compartilhar);
+    $('btnTrocar').addEventListener('click', compartilhar);
+    $('btnParar').addEventListener('click', function () { parar(''); });
+    $('btnCopiar').addEventListener('click', function () {
+      var txt = linkSala(), rot = $('btnCopiar').querySelector('span');
+      function feito(ok) { rot.textContent = ok ? 'Copiado' : 'Selecionado'; setTimeout(function () { rot.textContent = 'Copiar'; }, 1600); }
+      function selecionar() {
+        var r = document.createRange(); r.selectNodeContents($('linkSala'));
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+        feito(ok);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { feito(true); }, selecionar);
+      else selecionar();
+    });
+    $('btnNovoLink').addEventListener('click', function () {
+      var b = $('btnNovoLink');
+      if (Date.now() > confirmarAte) {
+        confirmarAte = Date.now() + 4000; b.textContent = 'Clique de novo para confirmar (o link atual para de funcionar)';
+        setTimeout(function () { if (Date.now() >= confirmarAte) b.textContent = 'Gerar link novo'; }, 4100);
+        return;
+      }
+      confirmarAte = 0; b.textContent = 'Gerar link novo';
+      broadcast({ t: 'desativado' });
+      setTimeout(function () {
+        viewers.forEach(function (v) { encerrar(v, false); });
+        codigo = novoCodigo(); guardar('codigo', codigo);
+        desenharLink(); servidor = 'conectando'; tudo();
+        criarPeer();
+      }, 300);
+    });
+    $('nomeHost').addEventListener('input', function () {
+      nomeHost = limparNome($('nomeHost').value); guardar('nomeHost', nomeHost); desenharNome();
+      clearTimeout(tNome); tNome = setTimeout(function () { broadcast(estado()); }, 500);
+    });
+    $('chkSom').addEventListener('change', function () {
+      comSom = $('chkSom').checked; guardar('som', comSom ? '1' : '0'); desenharEstimativa();
+      var at = stream && stream.getAudioTracks()[0];
+      if (at) { at.enabled = comSom; desenharCaptura(); aviso(''); }
+      else if (aoVivo && comSom) aviso('Para enviar som, clique em Trocar o que compartilho e marque “Compartilhar áudio”.');
+    });
+
+    // ---------- começo
+    $('nomeHost').value = nomeHost;
+    $('chkSom').checked = comSom;
+    if (location.protocol === 'file:') $('avisoArquivo').hidden = false;
+    if (!podeCapturar) aviso('Para compartilhar, abra no computador (Chrome, Edge ou Firefox). Pelo celular dá para assistir.', 'erro');
+    desenharLink(); desenharNome(); desenharPresets(); tudo();
+    criarPeer();
+    setInterval(coletarStats, 2000);
+    window.__telinha = {
+      modo: 'anfitriao',
+      codigo: function () { return codigo; },
+      viewers: function () { var a = []; viewers.forEach(function (v) { a.push({ nome: v.nome, estado: estadoViewer(v), stats: v.stats }); }); return a; },
+      servidor: function () { return servidor; }
+    };
+  }
+
+  // ================================================================== ESPECTADOR
+  function espectador(codigo) {
+    document.body.dataset.modo = 'espectador';
+    $('espectador').hidden = false;
+    var alvo = PREFIXO + codigo;
+    var video = $('tela'), palco = $('palcoV');
+    var peer = null, conn = null, call = null;
+    var hostNome = '', aoVivo = false, jaViuHost = false, fim = false, cheia = false;
+    var estadoV = '', tConectar = null, tEsconder = null, falhas = 0, somLiberado = false, ultStats = null, ultimoStats = null, trava = null;
+    var nome = limparNome(ler('nome') || '');
+    if (!nome) { nome = ANIMAIS[Math.floor(Math.random() * ANIMAIS.length)]; guardar('nome', nome); }
+    var volume = parseFloat(ler('volume'));
+    if (!(volume >= 0 && volume <= 1)) volume = 1;
+    $('volume').value = String(volume);
+    $('meuNome').textContent = nome;
+
+    function quem() { return hostNome || 'seu amigo'; }
+    function Quem() { var q = quem(); return q.charAt(0).toUpperCase() + q.slice(1); }
+    function agendar(fn, ms) { clearTimeout(tConectar); tConectar = setTimeout(fn, ms); }
+
+    function setEstado(e) {
+      estadoV = e;
+      var T = {
+        'conectando':     ['Conectando…', ''],
+        'esperando-host': ['Esperando ' + quem() + ' abrir a Telinha', 'Esta página tenta de novo sozinha. Pode deixar aberta.'],
+        'online':         [Quem() + ' está na sala', 'Quando começar a compartilhar, a tela aparece aqui.'],
+        'chegando':       ['Carregando o vídeo…', ''],
+        'parou':          [Quem() + ' parou de compartilhar', 'Deixe aberta: quando voltar, a tela aparece sozinha.'],
+        'host-saiu':      [Quem() + ' saiu da Telinha', 'Esta página tenta reconectar sozinha.'],
+        'sem-servidor':   ['Sem conexão com o servidor', 'Confira sua internet. Tentando de novo…'],
+        'rede':           ['Não consegui conectar com ' + quem(), 'Algumas redes bloqueiam esse tipo de conexão (4G/5G e redes de empresa, às vezes). Continuo tentando; se não der, troque de rede.'],
+        'removido':       ['Você foi removido desta sala', ''],
+        'desativado':     ['Este link foi desativado', 'Peça o link novo para ' + quem() + '.'],
+        'cheia':          ['A sala está cheia', 'Tento de novo daqui a pouco.'],
+        'ao-vivo':        ['', '']
+      }[e] || ['', ''];
+      $('estadoV').hidden = e === 'ao-vivo';
+      $('estadoTitulo').textContent = T[0]; $('estadoSub').textContent = T[1];
+      $('controles').hidden = e !== 'ao-vivo';
+      if (e === 'ao-vivo') pill('vivo', 'Ao vivo');
+      else if (e === 'online' || e === 'chegando' || e === 'parou') pill('ok', 'Conectado');
+      else if (e === 'removido' || e === 'desativado') pill('neutro', 'Fora do ar');
+      else pill('alerta', e === 'conectando' ? 'Conectando…' : 'Aguardando');
+      atualizarTitulo(); atualizarSom(); manterAcordado();
+    }
+    function atualizarTitulo() {
+      var t = hostNome ? 'Tela de ' + hostNome : 'Tela do seu amigo';
+      $('tituloSala').textContent = t;
+      document.title = (estadoV === 'ao-vivo' ? '● ' : '') + t + ' · Telinha';
+    }
+    function atualizarSom() {
+      var mudo = video.muted || video.volume === 0;
+      $('btnAtivarSom').hidden = !(estadoV === 'ao-vivo' && !somLiberado);
+      $('btnMudo').querySelector('use').setAttribute('href', mudo ? '#i-mudo' : '#i-som');
+      $('btnMudo').setAttribute('aria-label', mudo ? 'Ligar o som' : 'Tirar o som');
+      $('btnMudo').title = mudo ? 'Ligar o som' : 'Tirar o som';
+    }
+    // Celular não apaga a tela enquanto o vídeo está passando.
+    function manterAcordado() {
+      if (!('wakeLock' in navigator)) return;
+      if (estadoV === 'ao-vivo' && document.visibilityState === 'visible') {
+        if (!trava) navigator.wakeLock.request('screen').then(function (t) { trava = t; t.addEventListener('release', function () { trava = null; }); }, function () {});
+      } else if (trava) { trava.release().catch(function () {}); trava = null; }
+    }
+    function tocar() {
+      video.volume = volume;
+      video.muted = !somLiberado;
+      var pr = video.play();
+      if (pr && pr.catch) pr.catch(function () {
+        if (!video.muted) { somLiberado = false; video.muted = true; video.play().catch(function () {}); atualizarSom(); }
+      });
+      atualizarSom();
+    }
+    function liberarSom() {
+      somLiberado = true; video.muted = false;
+      if (volume === 0) { volume = 1; video.volume = 1; $('volume').value = '1'; guardar('volume', '1'); }
+      var pr = video.play(); if (pr && pr.catch) pr.catch(function () {});
+      atualizarSom();
+    }
+
+    // ---------- conexão
+    function fecharCall() {
+      var c = call; call = null; ultStats = null;
+      if (c) { try { c.close(); } catch (e) {} }
+      video.srcObject = null;
+    }
+    function encerrarTudo(e) {
+      fim = true; clearTimeout(tConectar); fecharCall();
+      if (conn) { try { conn.close(); } catch (err) {} conn = null; }
+      if (peer) { try { peer.destroy(); } catch (err) {} }
+      setEstado(e);
+    }
+    function criarPeer() {
+      if (fim) return;
+      if (peer && !peer.destroyed) { try { peer.destroy(); } catch (e) {} }
+      var p = new window.Peer(OPCOES_PEER);
+      peer = p;
+      p.on('open', function () { if (peer === p) conectar(); });
+      p.on('call', function (c) { if (peer === p) atender(c); else { try { c.close(); } catch (e) {} } });
+      p.on('connection', function (c) { try { c.close(); } catch (e) {} });
+      p.on('disconnected', function () {
+        if (peer !== p || fim) return;
+        agendar(function () { if (peer === p && !p.destroyed && p.disconnected) { try { p.reconnect(); } catch (e) { criarPeer(); } } }, 2000);
+      });
+      p.on('error', function (err) {
+        if (peer !== p || fim) return;
+        var t = err && err.type;
+        if (t === 'peer-unavailable') {
+          if (conn && !conn.open) { var c = conn; conn = null; c.__pendente = false; try { c.close(); } catch (e) {} }
+          if (!conn) { setEstado(jaViuHost ? 'host-saiu' : 'esperando-host'); agendar(conectar, 3000); }
+        } else if (t === 'browser-incompatible') {
+          fatal('Seu navegador não faz vídeo em tempo real', 'Use Chrome, Edge, Firefox ou Safari atualizado.'); fim = true;
+        } else if (ERROS_SERVIDOR.indexOf(t) >= 0) {
+          if (!conn || !conn.open) setEstado('sem-servidor');
+          agendar(function () {
+            if (peer !== p || fim) return;
+            if (p.destroyed) criarPeer(); else if (p.disconnected) { try { p.reconnect(); } catch (e) { criarPeer(); } } else conectar();
+          }, 3000);
+        }
+      });
+    }
+    function conectar() {
+      clearTimeout(tConectar);
+      if (fim || !peer || peer.destroyed) return;
+      if (peer.disconnected) { try { peer.reconnect(); } catch (e) { criarPeer(); } return; }
+      if (conn && (conn.open || conn.__pendente)) return;
+      if (!estadoV || estadoV === 'sem-servidor') setEstado('conectando');
+      var c = peer.connect(alvo, { reliable: true, serialization: 'json', metadata: { nome: nome } });
+      if (!c) { agendar(conectar, 3000); return; }
+      conn = c; c.__pendente = true;
+      var limite = setTimeout(function () {
+        if (conn !== c || c.open) return;
+        conn = null; c.__pendente = false; try { c.close(); } catch (e) {}
+        falhas++; setEstado(falhas >= 2 ? 'rede' : (jaViuHost ? 'host-saiu' : 'esperando-host')); agendar(conectar, 3000);
+      }, 20000);
+      c.on('open', function () {
+        clearTimeout(limite);
+        if (conn !== c) { try { c.close(); } catch (e) {} return; }
+        c.__pendente = false; c.__abriu = true; falhas = 0; jaViuHost = true;
+        if (estadoV !== 'ao-vivo') setEstado(aoVivo ? 'chegando' : 'online');
+      });
+      c.on('data', function (m) { if (conn === c) tratar(m); });
+      c.on('close', function () {
+        clearTimeout(limite);
+        if (conn !== c) return;
+        conn = null; c.__pendente = false;
+        if (fim) return;
+        if (cheia) { cheia = false; setEstado('cheia'); agendar(conectar, 15000); return; }
+        if (c.__abriu) { fecharCall(); aoVivo = false; setEstado('host-saiu'); }
+        else { falhas++; if (falhas >= 2) setEstado('rede'); }  // fechou sem abrir = a rede não deixou conectar
+        agendar(conectar, 3000);
+      });
+      c.on('error', function () {});
+    }
+    function tratar(m) {
+      if (!m || typeof m !== 'object') return;
+      if (m.t === 'estado') {
+        var eraVivo = aoVivo;
+        hostNome = limparNome(m.host); aoVivo = !!m.aoVivo;
+        if (!aoVivo) { fecharCall(); setEstado(eraVivo ? 'parou' : 'online'); }
+        else if (!call) setEstado('chegando');
+        else atualizarTitulo();
+      } else if (m.t === 'removido') encerrarTudo('removido');
+      else if (m.t === 'desativado') encerrarTudo('desativado');
+      else if (m.t === 'cheio') cheia = true;
+    }
+    function atender(c) {
+      if (fim || c.peer !== alvo) { try { c.close(); } catch (e) {} return; }
+      var antigo = call; call = c; ultStats = null;
+      if (antigo && antigo !== c) { try { antigo.close(); } catch (e) {} }
+      c.answer(undefined, { sdpTransform: ajustarSdp });
+      c.on('stream', function (s) {
+        if (call !== c) return;
+        if (video.srcObject !== s) video.srcObject = s;
+        aoVivo = true; tocar(); setEstado('ao-vivo');
+      });
+      c.on('close', function () {
+        if (call !== c) return;
+        call = null; ultStats = null; video.srcObject = null;
+        if (fim || !conn || !conn.open) return;
+        if (aoVivo) {
+          setEstado('chegando');
+          setTimeout(function () { if (!call && aoVivo && conn && conn.open) { try { conn.send({ t: 'refazer' }); } catch (e) {} } }, 4000);
+        } else setEstado('parou');
+      });
+      c.on('error', function () {});
+    }
+    function coletarStats() {
+      var c = call;
+      if (!c || !c.peerConnection || estadoV !== 'ao-vivo') { $('statsV').textContent = ''; return; }
+      c.peerConnection.getStats().then(function (rep) {
+        var r = lerStats(rep, 'inbound-rtp'), i = r.rtp, kbps = null;
+        if (i && ultStats && i.timestamp > ultStats.ts) kbps = ((i.bytesReceived - ultStats.bytes) * 8) / (i.timestamp - ultStats.ts);
+        ultStats = i ? { bytes: i.bytesReceived, ts: i.timestamp } : null;
+        if (i) {
+          ultimoStats = { w: i.frameWidth, h: i.frameHeight, fps: i.framesPerSecond, kbps: kbps, relay: r.relay, conectado: r.conectado };
+          $('statsV').textContent = textoStats(ultimoStats);
+        }
+      }, function () {});
+    }
+
+    // ---------- controles do vídeo
+    function telaCheia() {
+      if (document.fullscreenElement) { document.exitFullscreen().catch(function () {}); return; }
+      if (palco.requestFullscreen) palco.requestFullscreen().catch(function () { if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); });
+      else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+    }
+    function mostrarControles() {
+      palco.classList.add('mostrar');
+      clearTimeout(tEsconder);
+      tEsconder = setTimeout(function () { palco.classList.remove('mostrar'); }, 2600);
+    }
+    $('btnAtivarSom').addEventListener('click', liberarSom);
+    $('btnMudo').addEventListener('click', function () {
+      if (!somLiberado || video.muted || video.volume === 0) liberarSom(); else { video.muted = true; atualizarSom(); }
+    });
+    $('volume').addEventListener('input', function () {
+      volume = parseFloat($('volume').value) || 0; video.volume = volume; guardar('volume', String(volume));
+      if (volume > 0 && video.muted && somLiberado) video.muted = false;
+      atualizarSom();
+    });
+    $('btnCheia').addEventListener('click', telaCheia);
+    if (document.pictureInPictureEnabled && !video.disablePictureInPicture) {
+      $('btnPip').hidden = false;
+      $('btnPip').addEventListener('click', function () {
+        if (document.pictureInPictureElement) document.exitPictureInPicture().catch(function () {});
+        else video.requestPictureInPicture().catch(function () {});
+      });
+    }
+    palco.addEventListener('dblclick', function (e) { if (estadoV === 'ao-vivo' && !e.target.closest('.controles') && !e.target.closest('.ativar-som')) telaCheia(); });
+    palco.addEventListener('mousemove', mostrarControles);
+    palco.addEventListener('touchstart', mostrarControles, { passive: true });
+    palco.addEventListener('mouseleave', function () { palco.classList.remove('mostrar'); });
+    document.addEventListener('visibilitychange', manterAcordado);
+    $('btnTrocarNome').addEventListener('click', function () {
+      $('formNome').hidden = false; $('inputNome').value = nome; $('inputNome').focus(); $('inputNome').select();
+    });
+    $('formNome').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var n = limparNome($('inputNome').value);
+      if (n) { nome = n; guardar('nome', n); $('meuNome').textContent = n; if (conn && conn.open) { try { conn.send({ t: 'nome', nome: n }); } catch (err) {} } }
+      $('formNome').hidden = true;
+    });
+
+    // ---------- começo
+    setEstado('conectando');
+    criarPeer();
+    setInterval(coletarStats, 2000);
+    window.__telinha = {
+      modo: 'espectador',
+      estado: function () { return estadoV; },
+      stats: function () { return ultimoStats; }
+    };
+  }
+
+  // ------------------------------------------------------------------ partida
+  carregarPeerJS(0).then(function (ok) {
+    if (ok) iniciar();
+    else fatal('Não deu para carregar a Telinha', 'Confira sua internet e recarregue a página. Bloqueador de anúncios às vezes atrapalha.');
+  });
+})();
+</script>
+</body>
+</html>
