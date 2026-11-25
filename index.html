@@ -168,6 +168,14 @@ select { min-height: 44px; max-width: 240px; padding: 0 10px; border-radius: 10p
   .btn { flex: 1 1 auto; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+/* Espectador: o vídeo ocupa a janela inteira do navegador (sem a moldura e sem o rodapé). */
+body[data-modo="espectador"] { height: 100vh; height: 100dvh; overflow: hidden; }
+body[data-modo="espectador"] .rodape { display: none; }
+body[data-modo="espectador"] .topo { padding-block: 8px; }
+body[data-modo="espectador"] #espectador { max-width: none; flex: 1; min-height: 0; padding: 0; gap: 0; }
+body[data-modo="espectador"] #palcoV { flex: 1; min-height: 0; width: 100%; min-width: 0; aspect-ratio: auto; margin: 0; border: 0; border-radius: 0; }
+body[data-modo="espectador"] .sob-palco { max-width: none; padding: 6px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); font-size: 12.5px; }
+body[data-modo="espectador"] .sob-palco p { margin: 0; }
 </style>
 </head>
 <body data-modo="carregando">
